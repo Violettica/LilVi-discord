@@ -1,11 +1,5 @@
 import discord
 import shlex
-import re
-
-
-async def send_reply(message, reply):
-    print(f"Replying in {message.channel} with \"{reply}\"")
-    await message.channel.send(reply)
 
 
 class LilVi(discord.Client):  # TODO: Change global bollocks to class
@@ -38,9 +32,6 @@ class LilVi(discord.Client):  # TODO: Change global bollocks to class
         elif message.content.startswith(f"{self.prefix}echo"):
             echo_msg = "Under construction! >m<"
             await send_reply(message, echo_msg)
-
-
-
 
 
 def split_command(s):
