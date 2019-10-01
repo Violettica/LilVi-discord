@@ -1,13 +1,20 @@
 import discord
 import shlex
+import re
 
 
-class LilVi(discord.Client):  # TODO: Change global bollocks to class
-    prefix = "vi$"
+class LilVi(discord.Client):
+    prefix = "v!"
+    re_channel = re.compile(r"^<#(\d+)>$")
+    selector = None
 
     def __init__(self, **options):
         super().__init__(**options)
         self.activity = discord.Game(f"Prefix is {self.prefix}")
+        self.selector = {
+            "hello": self.hello,
+            "echo": self.echo
+        }
 
     async def on_ready(self):
         print(f"Lil' Vi has logged in as {self.user}")
@@ -17,21 +24,47 @@ class LilVi(discord.Client):  # TODO: Change global bollocks to class
             return  # No self responding
 
         if message.content.startswith(self.prefix):
-            print(f"Received command: {message.content}")
+            parts = shlex.split(message.content)
+            command_str = self.extract_command(parts[0])
+            command = self.selector.get(command_str, self.default)
+            self.print_command(message, command_str)
+            await command(message)
         else:
             return
 
-        # TODO: Change this to a dictionary switch
-        selector = {
-            f"{self.prefix}hello": lambda m: send_reply(m, "Hello!")
+    async def hello(self, msg):
+        await send_reply(msg, f"Hello! Latency: {int(seconds_to_ns(self.latency))} ns")
 
-        }
-        if message.content.startswith(f"{self.prefix}hello"):
-            print(f"Hello World command from {message.channel}")
-            await send_reply(message, "Hello!")
-        elif message.content.startswith(f"{self.prefix}echo"):
-            echo_msg = "Under construction! >m<"
-            await send_reply(message, echo_msg)
+    async def echo(self, msg):
+        parts = split_command(msg.content)
+        if len(parts) == 1:
+            await send_reply(msg, parts[0])
+        else:
+            await self.send_to_channel(parts[0], parts[1])
+
+    async def default(self, msg):
+        print(f"Invalid command: {msg.content}")
+
+    def print_command(self, msg, command):
+        print(f"Received {command} in channel {msg.channel.name} ({msg.channel.id}) from guild {msg.guild.name} "
+              f"({msg.guild.id})")
+        print(f"Command: {msg.content}")
+
+    async def send_to_channel(self, channel_raw, msg):
+        match = self.re_channel.match(channel_raw)
+        try:
+            channel_id = int(match.group(1))
+            channel = await self.fetch_channel(channel_id)
+        except discord.NotFound:
+            print("Invalid channel passed")
+            return
+        except IndexError:
+            print("Problem with matching channel")
+            return
+        await channel.send(msg)
+
+    def extract_command(self, prefixed_command):
+        return prefixed_command.replace(self.prefix, "", 1)  # Only replace first occurrence of the prefix.
 
 
 def split_command(s):
@@ -39,9 +72,13 @@ def split_command(s):
     return parts[1:]  # cut the prefix
 
 
-async def send_reply(message, reply):
-    print(f"Replying in {message.channel} with \"{reply}\"")
-    await message.channel.send(reply)
+def seconds_to_ns(seconds):
+    return seconds * 10 ** -9
+
+
+async def send_reply(origin_msg, reply):
+    print(f"Replying in {origin_msg.channel} with \"{reply}\"")
+    await origin_msg.channel.send(reply)
 
 
 def main():
