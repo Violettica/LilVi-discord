@@ -1,12 +1,12 @@
 import discord
 import shlex
 import re
+import logging
 
 
 class LilVi(discord.Client):
     prefix = "v!"
     re_channel = re.compile(r"^<#(\d+)>$")
-    selector = None
 
     def __init__(self, **options):
         super().__init__(**options)
@@ -17,7 +17,7 @@ class LilVi(discord.Client):
         }
 
     async def on_ready(self):
-        print(f"Lil' Vi has logged in as {self.user}")
+        logging.info(f"Lil' Vi has logged in as {self.user}")
 
     async def on_message(self, message):
         if message.author == self.user:
@@ -43,12 +43,12 @@ class LilVi(discord.Client):
             await self.send_to_channel(parts[0], parts[1])
 
     async def default(self, msg):
-        print(f"Invalid command: {msg.content}")
+        logging.warning(f"Invalid command: {msg.content}")
 
     def print_command(self, msg, command):
-        print(f"Received {command} in channel {msg.channel.name} ({msg.channel.id}) from guild {msg.guild.name} "
-              f"({msg.guild.id})")
-        print(f"Command: {msg.content}")
+        logging.info(f"Received {command} in channel {msg.channel.name} ({msg.channel.id}) from guild {msg.guild.name} "
+                     f"({msg.guild.id})")
+        logging.info(f"Command: {msg.content}")
 
     async def send_to_channel(self, channel_raw, msg):
         match = self.re_channel.match(channel_raw)
@@ -56,10 +56,10 @@ class LilVi(discord.Client):
             channel_id = int(match.group(1))
             channel = await self.fetch_channel(channel_id)
         except discord.NotFound:
-            print("Invalid channel passed")
+            logging.error(f"{channel_raw} is not a valid channel")
             return
         except IndexError:
-            print("Problem with matching channel")
+            logging.error(f"{channel_raw} matching incorrectly")
             return
         await channel.send(msg)
 
@@ -77,7 +77,7 @@ def seconds_to_ns(seconds):
 
 
 async def send_reply(origin_msg, reply):
-    print(f"Replying in {origin_msg.channel} with \"{reply}\"")
+    logging.info(f"Replying in {origin_msg.channel} with \"{reply}\"")
     await origin_msg.channel.send(reply)
 
 
