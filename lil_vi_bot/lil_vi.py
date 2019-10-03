@@ -2,6 +2,11 @@ import discord
 import shlex
 import re
 import logging
+import logging.config
+import logging.handlers
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.handlers.RotatingFileHandler("bot.log", mode='a', backupCount=2))
 
 
 class LilVi(discord.Client):
@@ -11,8 +16,8 @@ class LilVi(discord.Client):
     def __init__(self, **options):
         super().__init__(**options)
         self.activity = discord.Game(f"Prefix is {self.prefix}")
-        self.selector = {
-            "hello": self.hello,
+        self.selector_user = {
+            "ping": self.hello,
             "echo": self.echo
         }
 
@@ -26,7 +31,7 @@ class LilVi(discord.Client):
         if message.content.startswith(self.prefix):
             parts = shlex.split(message.content)
             command_str = self.extract_command(parts[0])
-            command = self.selector.get(command_str, self.default)
+            command = self.selector_user.get(command_str, self.default)
             self.print_command(message, command_str)
             await command(message)
         else:
@@ -54,13 +59,16 @@ class LilVi(discord.Client):
         match = self.re_channel.match(channel_raw)
         try:
             channel_id = int(match.group(1))
-            channel = await self.fetch_channel(channel_id)
+            await self.send_to_channel_id(channel_id, msg)
         except discord.NotFound:
             logging.error(f"{channel_raw} is not a valid channel")
             return
         except IndexError:
             logging.error(f"{channel_raw} matching incorrectly")
             return
+
+    async def send_to_channel_id(self, channel_id, msg):
+        channel = await self.fetch_channel(channel_id)
         await channel.send(msg)
 
     def extract_command(self, prefixed_command):
@@ -77,7 +85,7 @@ def seconds_to_ns(seconds):
 
 
 async def send_reply(origin_msg, reply):
-    logging.info(f"Replying in {origin_msg.channel} with \"{reply}\"")
+    logger.info(f"Replying in {origin_msg.channel} with \"{reply}\"")
     await origin_msg.channel.send(reply)
 
 
